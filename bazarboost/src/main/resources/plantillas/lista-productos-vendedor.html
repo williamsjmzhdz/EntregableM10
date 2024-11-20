@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+  <head th:replace="layout :: commonHead"></head>
+
+
+
+  <!-- Definir el fragmento con el título y los estilos específicos -->
+  <th:block th:fragment="headExtras">
+    <title>BazarBoost - Lista de mis productos</title>
+    <link rel="stylesheet" href="/estilos/base.css" />
+    <link rel="stylesheet" href="/estilos/base-listas.css" />
+  </th:block>
+
+  <body>
+    <!-- Navbar - Usar en todas las plantillas -->
+    <div th:insert="layout :: navbar"></div>
+    <!-- Fin del Navbar -->
+
+    <!-- Main Content -->
+    <div class="container my-4 main-content" id="bodyContainer">
+      <h2 class="mb-4">Productos</h2>
+
+      <!-- Sección para mensajes -->
+      <div class="alerts-container">
+        <!-- Alerta de éxito -->
+        <div
+                th:if="${mensajeExito}"
+                class="alert alert-success d-flex align-items-center"
+                id="success-alert"
+                role="alert"
+        >
+          <i class="bi bi-check-circle-fill me-2"></i>
+          <div th:text="${mensajeExito}"></div>
+        </div>
+
+        <!-- Alerta de error del servidor (Thymeleaf) -->
+        <div
+                th:if="${mensajeError}"
+                class="alert alert-danger d-flex align-items-center"
+                id="server-error-alert"
+                role="alert"
+        >
+          <i class="bi bi-exclamation-triangle me-2"></i>
+          <span th:text="${mensajeError}"></span>
+          <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+
+        <!-- Alerta dinámica para errores de JavaScript -->
+        <div
+                class="alert alert-danger d-flex align-items-center d-none"
+                id="dynamic-error-alert"
+                role="alert"
+        >
+          <i class="bi bi-exclamation-triangle me-2"></i>
+          <span id="dynamic-error-message"></span>
+          <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+      </div>
+
+      <!-- Botón para añadir un nuevo producto -->
+      <div class="d-flex justify-content-end mb-3">
+        <a href="/productos/vendedor/crear" class="btn btn-success">
+          <i class="bi bi-plus-lg"></i> Añadir Producto
+        </a>
+      </div>
+
+
+      <!-- Tabla de productos -->
+      <div class="table-responsive">
+        <table class="table table-hover align-middle">
+          <thead class="table-dark">
+            <tr>
+              <th scope="col">Nombre del Producto</th>
+              <th scope="col">Precio</th>
+              <th scope="col">Descuento</th>
+              <th scope="col">Existencia</th>
+              <th scope="col">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="productos-tbody">
+            <!-- Productos cargados dinámicamente aquí -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Modal de confirmación de eliminación -->
+    <div
+      class="modal fade"
+      id="deleteModal"
+      tabindex="-1"
+      aria-labelledby="deleteModalLabel"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="deleteModalLabel">
+              Confirmar Eliminación
+            </h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
+          </div>
+          <div class="modal-body">
+            ¿Estás seguro de que deseas eliminar este producto? Esta acción no
+            se puede deshacer.
+          </div>
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-bs-dismiss="modal"
+            >
+              Cancelar
+            </button>
+            <form id="deleteForm" method="POST" style="display: inline;">
+              <input type="hidden" name="_method" value="DELETE">
+              <button type="submit" class="btn btn-danger">Eliminar</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div th:insert="layout :: footer"></div>
+
+    <th:block th:insert="layout :: commonScripts"></th:block>
+
+    <script>
+      // Función para cargar los productos del vendedor
+      function cargarProductosVendedor() {
+        const url = new URL('/api/productos/mis-productos', window.location.origin);
+        fetch(url)
+          .then(response => {
+            if (!response.ok) {
+              // Maneja diferentes códigos de error
+              if (response.status === 404) {
+                return response.text().then(errorMessage => {
+                  mostrarMensajeError("No se encontraron productos para el vendedor."); // Mensaje amigable para el usuario
+                  console.error(`Error 404: ${errorMessage}`); // Detalles técnicos en consola
+                  throw new Error(`404 Not Found: ${errorMessage}`);
+                });
+              } else {
+                mostrarMensajeError("Ocurrió un error al cargar los productos. Inténtelo más tarde.");
+                console.error(`HTTP error! status: ${response.status}, message: ${response.statusText}`);
+                throw new Error(`HTTP error! status: ${response.status}, message: ${response.statusText}`);
+              }
+            }
+            return response.json();
+          })
+          .then(data => {
+            const productosTbody = document.getElementById('productos-tbody');
+            productosTbody.innerHTML = ''; // Limpiar el contenido anterior
+
+            data.forEach(producto => {
+              const descuentoTexto = producto.descuentoPorcentaje > 0
+                ? `${producto.descuentoPorcentaje}% ($${producto.descuentoValor.toFixed(2)})`
+                : 'Sin descuento';
+
+              const productoHtml = `
+                <tr data-producto-id="${producto.productoId}">
+                  <td data-label="Nombre del Producto">${producto.nombre}</td>
+                  <td data-label="Precio">$${producto.precio.toFixed(2)}</td>
+                  <td data-label="Descuento">${descuentoTexto}</td>
+                  <td data-label="Existencia">${producto.existencia}</td>
+                  <td data-label="Acciones">
+                    <a href="/productos/vendedor/editar/${producto.productoId}" class="btn btn-primary btn-sm">
+                      <i class="bi bi-pencil"></i> Editar
+                    </a>
+                    <button class="btn btn-danger btn-sm"
+                          onclick="asignarAction(${producto.productoId})"
+                          data-bs-toggle="modal"
+                          data-bs-target="#deleteModal">
+                    <i class="bi bi-trash"></i> Eliminar
+                  </button>
+                  </td>
+                </tr>`;
+              productosTbody.insertAdjacentHTML('beforeend', productoHtml);
+            });
+          })
+          .catch(error => {
+            console.error('Error al cargar productos:', error); // Log detallado en la consola
+          });
+      }
+
+      function asignarAction(productoId) {
+          const deleteForm = document.getElementById('deleteForm');
+          deleteForm.action = `/productos/vendedor/eliminar/${productoId}`;
+      }
+
+      // Event listener para limpiar el formulario cuando se cierra el modal
+      document.getElementById('deleteModal').addEventListener('hidden.bs.modal', function () {
+          document.getElementById('deleteForm').action = '';
+      });
+
+      // Función para mostrar un mensaje de error amigable al usuario
+      function mostrarMensajeError(mensaje) {
+        const alertElement = document.getElementById('dynamic-error-alert');
+        const messageElement = document.getElementById('dynamic-error-message');
+        messageElement.textContent = mensaje;
+        alertElement.classList.remove('d-none');
+
+        // Opcional: Hacer scroll hacia la alerta
+        alertElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+
+      function ocultarMensajeError() {
+        const alertElement = document.getElementById('dynamic-error-alert');
+        alertElement.classList.add('d-none');
+      }
+
+      // Cargar productos al cargar la página
+      window.onload = () => {
+        cargarProductosVendedor();
+      };
+    </script>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", function() {
+          // Auto-ocultar alertas de éxito después de 5 segundos
+          const successAlert = document.getElementById('success-alert');
+          if (successAlert) {
+              setTimeout(() => {
+                  successAlert.classList.add('fade-out');
+                  successAlert.addEventListener('transitionend', () => {
+                      successAlert.remove();
+                  });
+              }, 5000);
+          }
+
+          // Manejar el cierre manual de las alertas
+          document.querySelectorAll('.alert .btn-close').forEach(button => {
+              button.addEventListener('click', function() {
+                  const alert = this.closest('.alert');
+                  alert.classList.add('fade-out');
+                  alert.addEventListener('transitionend', () => {
+                      if (alert.id === 'dynamic-error-alert') {
+                          alert.classList.add('d-none');
+                          alert.classList.remove('fade-out');
+                      } else {
+                          alert.remove();
+                      }
+                  });
+              });
+          });
+      }); // Cierre del addEventListener
+    </script>
+
+
+  </body>
+</html>

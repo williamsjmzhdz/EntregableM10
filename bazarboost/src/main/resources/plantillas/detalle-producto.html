@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.w3.org/1999/xhtml">
+<head th:replace="~{layout :: commonHead}"></head>
+
+<!-- Definir el fragmento con el título y los estilos específicos -->
+<th:block th:fragment="headExtras">
+  <title>BazarBoost - Detalle Producto</title>
+  <link rel="stylesheet" href="/estilos/base.css">
+  <link rel="stylesheet" href="/estilos/detalle-producto.css">
+</th:block>
+
+<body>
+<!-- Incluir el Navbar -->
+<div th:insert="~{layout :: navbar}"></div>
+
+<div class="container mt-5 main-content" id="bodyContainer">
+
+  <!-- Contenedor principal del producto -->
+  <div class="row" id="product-container">
+    <!-- El contenido se cargará dinámicamente aquí -->
+  </div>
+
+  <!-- Sección para mensaje de éxito de reseña del usuario -->
+  <div
+          class="alert alert-success d-none d-flex align-items-center mt-4"
+          id="success-alert"
+          role="alert"
+  >
+    <i class="bi bi-check-circle-fill me-2"></i>
+    <div></div>
+  </div>
+
+  <!-- Sección para mensajes de error de reseña del usuario -->
+  <div class="alert alert-danger d-none mt-4" id="warning-danger">
+    <i class="bi bi-exclamation-triangle"></i>
+    <span id="warning-message"></span>
+  </div>
+
+  <!-- Agregar nueva reseña -->
+  <div class="mt-4" id="my-review-section">
+    <!-- El contenido se cargará dinámicamente aquí -->
+  </div>
+
+  <!-- Sección de reseñas -->
+  <div class="reviews-section" id="reviews-section">
+    <!-- El contenido se cargará dinámicamente aquí -->
+  </div>
+</div>
+
+<div th:insert="layout :: footer"></div>
+
+<th:block th:insert="layout :: commonScripts"></th:block>
+
+
+<!-- Agregar tu script personalizado -->
+<script src="/js/mensajes-estado.js" type="module"></script>
+<script src="/js/boton-carrito.js" type="module"></script>
+<script src="/js/detalle-producto.js" type="module"></script>
+
+</body>
+</html>
